@@ -65,10 +65,11 @@ func isPillBlob(filename string) bool {
 	return len(filename) == len("90500007A01152103843") && strings.HasPrefix(filename, "90500")
 }
 
-func check(archive, sn, key string) error {
+func check(archive, sn, key string) ([]string, error) {
 	reader, err := zip.OpenReader(archive)
+	res := make([]string, 0)
 	if err != nil {
-		return err
+		return res, err
 	}
 
 	for _, file := range reader.File {
@@ -77,41 +78,39 @@ func check(archive, sn, key string) error {
 			fname := file.FileInfo().Name()
 
 			if fname == sn {
-				log.Println("Found it", archive)
 
 				fileReader, err := file.Open()
 				if err != nil {
-					return err
+					return res, err
 				}
 				defer fileReader.Close()
 
 				buff, err := ioutil.ReadAll(fileReader)
 				if err != nil {
-					return err
+					return res, err
 				}
 
 				blob, err := parse(buff, key)
 				if err != nil {
-					return err
+					return res, err
 				}
 
 				resp, upErr := upload(buff, fname)
 				if upErr != nil {
-					return upErr
+					return res, upErr
 				}
+
+				res = append(res, blob.DeviceId)
 
 				if strings.Contains(resp, blob.DeviceId) {
 					fmt.Println("All good", fname, blob.DeviceId)
-					return nil
 				}
-
-				return nil
 			}
 		}
 
 	}
 
-	return nil
+	return res, nil
 }
 
 func search(archive, deviceId, key string) (string, error) {

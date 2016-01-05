@@ -28,6 +28,7 @@ func (c *SearchCommand) Run(args []string) int {
 	deviceId := args[1]
 	c.Ui.Info("Searching for deviceId: " + deviceId)
 
+	found := false
 	for _, fileInfo := range fileInfos {
 		path := path.Join(args[0], fileInfo.Name())
 
@@ -42,12 +43,15 @@ func (c *SearchCommand) Run(args []string) int {
 				c.Ui.Info(fmt.Sprintf("zip file: %s", fileInfo.Name()))
 				c.Ui.Info(fmt.Sprintf("blob name: %s", fname))
 				c.Ui.Info(fmt.Sprintf("device_id: %s", deviceId))
-				return 0
+				found = true
 			}
 		}
 	}
 
-	c.Ui.Warn(fmt.Sprintf("%s NOT FOUND", deviceId))
+	if !found {
+		c.Ui.Warn(fmt.Sprintf("%s NOT FOUND", deviceId))
+	}
+
 	return 0
 }
 

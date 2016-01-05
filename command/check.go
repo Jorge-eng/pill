@@ -27,20 +27,29 @@ func (c *CheckCommand) Run(args []string) int {
 
 	snToFind := args[1]
 	c.Ui.Info("Checking for " + snToFind)
+	c.Ui.Info(fmt.Sprintf("Checking in %d files", len(fileInfos)))
 
+	i := 0
 	for _, fileInfo := range fileInfos {
 
 		if strings.HasSuffix(fileInfo.Name(), "zip") {
 			path := path.Join(args[0], fileInfo.Name())
-			err := check(path, snToFind, c.Key)
+			res, err := check(path, snToFind, c.Key)
 			if err != nil {
 				c.Ui.Error(fmt.Sprintf("%s %v", path, err))
 			}
+			if len(res) > 0 {
+				for _, r := range res {
+					c.Ui.Info(fmt.Sprintf("%s found in %s", r, fileInfo.Name()))
+				}
+			}
 		}
+		i += 1
 	}
+	c.Ui.Info(fmt.Sprintf("checked: %d files", i))
 	return 0
 }
 
 func (c *CheckCommand) Synopsis() string {
-	return "processes all zip files in current directory"
+	return "checks for sn in the given directory"
 }

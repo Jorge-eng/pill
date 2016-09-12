@@ -53,6 +53,12 @@ func init() {
 				Key: FactoryKey,
 			}, nil
 		},
+		"encrypt": func() (cli.Command, error) {
+			return &command.EncryptCommand{
+				Ui:  cui,
+				Key: FactoryKey,
+			}, nil
+		},
 		"search": func() (cli.Command, error) {
 			return &command.SearchCommand{
 				Ui:  cui,

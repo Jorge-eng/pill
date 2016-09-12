@@ -24,10 +24,12 @@ func (c *ProcessCommand) Run(args []string) int {
 		return 1
 	}
 
+	blobCheck := checker(args[1])
+
 	for _, fileInfo := range fileInfos {
 		if strings.HasSuffix(fileInfo.Name(), "zip") {
 			path := path.Join(args[0], fileInfo.Name())
-			failedUploads, err := process(path)
+			failedUploads, err := process(path, blobCheck)
 			if len(failedUploads) > 0 {
 				for _, failed := range failedUploads {
 					c.Ui.Warn(failed)

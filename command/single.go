@@ -21,7 +21,9 @@ func (c *SingleCommand) Run(args []string) int {
 		c.Ui.Warn("Not valid zip file")
 	}
 
-	failedUploads, err := process(zipFileName)
+	blobChecker := checker(args[1])
+
+	failedUploads, err := process(zipFileName, blobChecker)
 	if len(failedUploads) > 0 {
 		for _, failed := range failedUploads {
 			c.Ui.Warn(failed)

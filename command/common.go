@@ -20,10 +20,15 @@ var (
 	errInvalidBlob = errors.New("Invalid blob")
 )
 
-const endPoint = "https://canary-api.hello.is/v1/provision/blob/pill/"
+// const endPoint = "https://canary-api.hello.is/v1/provision/blob/pill/"
+const endPoint = "https://api.hello.is/v1/provision/blob/pill/"
+
+// const endPoint = "http://localhost:9999/v1/provision/blob/pill/"
 
 type InfoBlob struct {
 	DeviceId string
+	HexKey   string
+	RawBlob  string
 }
 
 func (i *InfoBlob) String() string {
@@ -39,6 +44,18 @@ func decrypt_aes_cfb(encrypted, key, iv []byte) ([]byte, error) {
 	stream := cipher.NewCFBDecrypter(block, iv)
 	stream.XORKeyStream(plain, encrypted)
 	return plain, nil
+}
+
+func encrypt_aes_cfb(raw, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return []byte{}, err
+	}
+	encrypted := make([]byte, len(raw))
+
+	stream := cipher.NewCBCEncrypter(block, raw[0:8])
+	stream.CryptBlocks(encrypted, raw)
+	return encrypted, nil
 }
 
 func parse(encrypted []byte, key string) (*InfoBlob, error) {
@@ -57,12 +74,45 @@ func parse(encrypted []byte, key string) (*InfoBlob, error) {
 		return nil, err
 	}
 	deviceId := hex.EncodeToString(out[:8])
-	infoBlob := InfoBlob{DeviceId: strings.ToUpper(deviceId)}
+	hardwareKey := hex.EncodeToString(out[32+128 : 32+128+16])
+
+	infoBlob := InfoBlob{
+		DeviceId: strings.ToUpper(deviceId),
+		HexKey:   strings.ToUpper(hardwareKey),
+		RawBlob:  hex.EncodeToString(out),
+	}
 	return &infoBlob, nil
+}
+
+type BlobCheck interface {
+	IsPill(filename string) bool
+}
+
+type DVTBlobCheck struct {
+}
+
+func (c *DVTBlobCheck) IsPill(filename string) bool {
+	t := len(filename) == len("e14903f226c0e4e1559deb8a20a370c087b968f3")
+	fmt.Println(filename, t)
+	return t
+}
+
+type PVTBlobCheck struct {
+}
+
+func (c *PVTBlobCheck) IsPill(filename string) bool {
+	return isPillBlob(filename)
 }
 
 func isPillBlob(filename string) bool {
 	return len(filename) == len("90500007A01152103843") && strings.HasPrefix(filename, "90500")
+}
+
+func checker(manufacturingStage string) BlobCheck {
+	if manufacturingStage == "dvt" {
+		return &DVTBlobCheck{}
+	}
+	return &PVTBlobCheck{}
 }
 
 func check(archive, sn, key string) ([]string, error) {
@@ -73,9 +123,9 @@ func check(archive, sn, key string) ([]string, error) {
 	}
 
 	for _, file := range reader.File {
-
-		if isPillBlob(file.FileInfo().Name()) {
-			fname := file.FileInfo().Name()
+		fname := file.FileInfo().Name()
+		// fmt.Println(fname)
+		if isPillBlob(fname) {
 
 			if fname == sn {
 
@@ -94,6 +144,11 @@ func check(archive, sn, key string) ([]string, error) {
 				if err != nil {
 					return res, err
 				}
+
+				fmt.Printf("device_id: %s\n", blob.DeviceId)
+				fmt.Printf("key: %s\n", blob.HexKey)
+				fmt.Printf("raw: %s\n", blob.RawBlob)
+				fmt.Println("")
 
 				resp, upErr := upload(buff, fname)
 				if upErr != nil {
@@ -152,7 +207,7 @@ func search(archive, deviceId, key string) (string, error) {
 }
 
 func upload(buff []byte, fname string) (string, error) {
-	resp, err := http.Post(endPoint+fname, "text/plain", bytes.NewBuffer(buff))
+	resp, err := http.Post(endPoint+"dvt-"+fname, "text/plain", bytes.NewBuffer(buff))
 	if err != nil {
 		log.Println(err)
 		return "", err
@@ -176,7 +231,7 @@ func upload(buff []byte, fname string) (string, error) {
 	return s, nil
 }
 
-func process(archive string) ([]string, error) {
+func process(archive string, checker BlobCheck) ([]string, error) {
 
 	failedUploads := make([]string, 0)
 	reader, err := zip.OpenReader(archive)
@@ -187,7 +242,8 @@ func process(archive string) ([]string, error) {
 	i := 0
 	for _, file := range reader.File {
 		fname := file.FileInfo().Name()
-		if isPillBlob(fname) {
+
+		if checker.IsPill(fname) {
 
 			fileReader, err := file.Open()
 			if err != nil {
@@ -206,15 +262,16 @@ func process(archive string) ([]string, error) {
 				failedUploads = append(failedUploads, msg)
 			}
 
-			if !strings.Contains(s, "EXISTS") {
-				fmt.Println(s)
-			}
+			// if !strings.Contains(s, "EXISTS") {
+			fmt.Println("resp", s)
+			// }
 
 			i += 1
 			if i%30 == 0 {
 				fmt.Println("Sleeping for 500ms...")
 				time.Sleep(500 * time.Millisecond)
 			}
+			// return failedUploads, nil
 		}
 
 	}

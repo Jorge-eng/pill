@@ -21,9 +21,9 @@ var (
 )
 
 // const endPoint = "https://canary-api.hello.is/v1/provision/blob/pill/"
-// const endPoint = "https://api.hello.is/v1/provision/blob/pill/"
+const endPoint = "https://api.hello.is/v1/provision/blob/pill/"
 
-const endPoint = "http://localhost:9999/v1/provision/blob/pill/"
+// const endPoint = "http://localhost:9999/v1/provision/blob/pill/"
 
 type InfoBlob struct {
 	DeviceId string

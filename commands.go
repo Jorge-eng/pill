@@ -65,6 +65,12 @@ func init() {
 				Key: FactoryKey,
 			}, nil
 		},
+		"extract": func() (cli.Command, error) {
+			return &command.ExtractCommand{
+				Ui:  cui,
+				Key: FactoryKey,
+			}, nil
+		},
 		"clean": func() (cli.Command, error) {
 			return &command.CleanCommand{
 				Ui: cui,

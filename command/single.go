@@ -11,7 +11,7 @@ type SingleCommand struct {
 }
 
 func (c *SingleCommand) Help() string {
-	helpText := `Usage: pill singe {pathToZipFile}`
+	helpText := `Usage: pill single {pathToZipFile}`
 	return strings.TrimSpace(helpText)
 }
 

@@ -21,9 +21,9 @@ var (
 )
 
 // const endPoint = "https://canary-api.hello.is/v1/provision/blob/pill/"
-const endPoint = "https://api.hello.is/v1/provision/blob/pill/"
+// const endPoint = "https://api.hello.is/v1/provision/blob/pill/"
 
-// const endPoint = "http://localhost:9999/v1/provision/blob/pill/"
+const endPoint = "http://localhost:9999/v1/provision/blob/pill/"
 
 type InfoBlob struct {
 	DeviceId string
@@ -100,19 +100,36 @@ func (c *DVTBlobCheck) IsPill(filename string) bool {
 type PVTBlobCheck struct {
 }
 
-func (c *PVTBlobCheck) IsPill(filename string) bool {
+type PillOneCheck struct {
+}
+
+func (c *PillOneCheck) IsPill(filename string) bool {
 	return isPillBlob(filename)
+}
+
+func (c *PVTBlobCheck) IsPill(filename string) bool {
+	return isPillBlobPVT(filename)
 }
 
 func isPillBlob(filename string) bool {
 	return len(filename) == len("90500007A01152103843") && strings.HasPrefix(filename, "90500")
 }
 
+func isPillBlobPVT(filename string) bool {
+	return len(filename) == len("905000071101164003302") && strings.HasPrefix(filename, "905000071")
+}
+
 func checker(manufacturingStage string) BlobCheck {
-	if manufacturingStage == "dvt" {
+	switch manufacturingStage {
+	case "dvt":
 		return &DVTBlobCheck{}
+	case "pvt":
+		return &PVTBlobCheck{}
+	case "one":
+		return &PillOneCheck{}
 	}
-	return &PVTBlobCheck{}
+	panic(manufacturingStage)
+	return nil
 }
 
 func check(archive, sn, key string) ([]string, error) {
@@ -161,6 +178,8 @@ func check(archive, sn, key string) ([]string, error) {
 					fmt.Println("All good", fname, blob.DeviceId)
 				}
 			}
+		} else {
+			fmt.Printf("%s: not valid filename\n", fname)
 		}
 
 	}
@@ -207,7 +226,7 @@ func search(archive, deviceId, key string) (string, error) {
 }
 
 func upload(buff []byte, fname string) (string, error) {
-	resp, err := http.Post(endPoint+"dvt-"+fname, "text/plain", bytes.NewBuffer(buff))
+	resp, err := http.Post(endPoint+fname, "text/plain", bytes.NewBuffer(buff))
 	if err != nil {
 		log.Println(err)
 		return "", err
@@ -232,7 +251,7 @@ func upload(buff []byte, fname string) (string, error) {
 }
 
 func process(archive string, checker BlobCheck) ([]string, error) {
-
+	fmt.Println("archive", archive)
 	failedUploads := make([]string, 0)
 	reader, err := zip.OpenReader(archive)
 	if err != nil {
@@ -240,7 +259,9 @@ func process(archive string, checker BlobCheck) ([]string, error) {
 	}
 
 	i := 0
+
 	for _, file := range reader.File {
+		fmt.Println(file.FileInfo().Size())
 		fname := file.FileInfo().Name()
 
 		if checker.IsPill(fname) {
@@ -272,6 +293,8 @@ func process(archive string, checker BlobCheck) ([]string, error) {
 				time.Sleep(500 * time.Millisecond)
 			}
 			// return failedUploads, nil
+		} else {
+			fmt.Println(">>> is pill", fname)
 		}
 
 	}

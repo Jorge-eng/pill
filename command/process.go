@@ -29,6 +29,7 @@ func (c *ProcessCommand) Run(args []string) int {
 	for _, fileInfo := range fileInfos {
 		if strings.HasSuffix(fileInfo.Name(), "zip") {
 			path := path.Join(args[0], fileInfo.Name())
+
 			failedUploads, err := process(path, blobCheck)
 			if len(failedUploads) > 0 {
 				for _, failed := range failedUploads {
@@ -41,6 +42,8 @@ func (c *ProcessCommand) Run(args []string) int {
 				return 1
 			}
 			c.Ui.Info(path)
+		} else {
+			c.Ui.Warn(fileInfo.Name() + " not a zip file")
 		}
 	}
 	return 0

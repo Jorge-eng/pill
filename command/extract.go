@@ -59,7 +59,7 @@ func (e *Extracter) Run() error {
 
 	if len(e.sn) > 0 {
 		for sn, _ := range e.sn {
-			e.Ui.Error(sn)
+			e.Ui.Error(fmt.Sprintf("missing: %s", sn))
 		}
 	}
 
@@ -85,6 +85,7 @@ func (c *ExtractCommand) Run(args []string) int {
 		sns[scanner.Text()] = true
 	}
 
+	fmt.Println("SNS = ", len(sns))
 	if err := scanner.Err(); err != nil {
 		c.Ui.Error(err.Error())
 		return 1
@@ -116,7 +117,7 @@ func (c *ExtractCommand) Run(args []string) int {
 	}
 	svc := dynamodb.New(sess, config)
 
-	partitionSize := 50
+	partitionSize := 99
 
 	allDeviceIds := make(map[string]Conflict)
 	for _, pair := range extracter.deviceIds {
@@ -126,6 +127,7 @@ func (c *ExtractCommand) Run(args []string) int {
 	for idxRange := range gopart.Partition(len(extracter.deviceIds), partitionSize) {
 		deviceIds := extracter.deviceIds[idxRange.Low:idxRange.High]
 		keys := make([]map[string]*dynamodb.AttributeValue, 0)
+		fmt.Printf("Range: %d, %d\n", idxRange.Low, idxRange.High)
 		for _, pair := range deviceIds {
 			m := map[string]*dynamodb.AttributeValue{
 				"device_id": {
@@ -167,10 +169,10 @@ func (c *ExtractCommand) Run(args []string) int {
 	}
 
 	fmt.Println("len alldevice", len(allDeviceIds))
-	fmt.Println("pill                    stored                  sent")
+	fmt.Println("pill\tstored\tsent")
 	for pillId, conflict := range allDeviceIds {
 		if conflict.Stored == "" {
-			fmt.Println(pillId, conflict.Sent, "not provisioned")
+			fmt.Printf("%s\t%s\t%s\n", pillId, conflict.Sent, "not provisioned")
 		} else {
 			fmt.Printf("%s\t%s\t%s\n", pillId, conflict.Stored, conflict.Sent)
 		}
@@ -197,8 +199,6 @@ func (e *Extracter) extract(archive, key string) error {
 			continue
 		}
 
-		delete(e.sn, fname)
-
 		fileReader, err := file.Open()
 		if err != nil {
 			return err
@@ -219,6 +219,8 @@ func (e *Extracter) extract(archive, key string) error {
 			Metadata: fname,
 		}
 		e.deviceIds = append(e.deviceIds, pair)
+
+		delete(e.sn, fname)
 	}
 	return nil
 }

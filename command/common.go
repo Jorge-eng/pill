@@ -142,7 +142,7 @@ func check(archive, sn, key string) ([]string, error) {
 	for _, file := range reader.File {
 		fname := file.FileInfo().Name()
 		// fmt.Println(fname)
-		if isPillBlob(fname) {
+		if isPillBlob(fname) || isPillBlobPVT(fname) {
 
 			if fname == sn {
 
@@ -178,10 +178,39 @@ func check(archive, sn, key string) ([]string, error) {
 					fmt.Println("All good", fname, blob.DeviceId)
 				}
 			}
-		} else {
-			fmt.Printf("%s: not valid filename\n", fname)
 		}
+	}
 
+	return res, nil
+}
+
+func checkLogs(archive, deviceId string) ([]string, error) {
+	reader, err := zip.OpenReader(archive)
+	res := make([]string, 0)
+	if err != nil {
+		return res, err
+	}
+
+	for _, file := range reader.File {
+		fname := file.FileInfo().Name()
+		// fmt.Println(fname)
+		if strings.HasSuffix(fname, ".htm") {
+
+			fileReader, err := file.Open()
+			if err != nil {
+				return res, err
+			}
+			defer fileReader.Close()
+
+			buff, err := ioutil.ReadAll(fileReader)
+			if err != nil {
+				return res, err
+			}
+
+			if strings.Contains(string(buff), deviceId) {
+				res = append(res, fname)
+			}
+		}
 	}
 
 	return res, nil
@@ -194,10 +223,8 @@ func search(archive, deviceId, key string) (string, error) {
 	}
 
 	for _, file := range reader.File {
-
-		if isPillBlob(file.FileInfo().Name()) {
-			fname := file.FileInfo().Name()
-
+		fname := file.FileInfo().Name()
+		if isPillBlob(fname) || isPillBlobPVT(fname) {
 			fileReader, err := file.Open()
 			if err != nil {
 				return "", err

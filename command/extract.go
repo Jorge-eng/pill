@@ -3,6 +3,7 @@ package command
 import (
 	"archive/zip"
 	"bufio"
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -52,7 +53,8 @@ func (e *Extracter) Run() error {
 
 			err := e.extract(path, e.key)
 			if err != nil {
-				return err
+				e.Ui.Error(err.Error())
+				// return err
 			}
 		}
 	}
@@ -188,7 +190,7 @@ func (c *ExtractCommand) Synopsis() string {
 func (e *Extracter) extract(archive, key string) error {
 	reader, err := zip.OpenReader(archive)
 	if err != nil {
-		return err
+		return errors.New("boo: " + err.Error())
 	}
 
 	for _, file := range reader.File {

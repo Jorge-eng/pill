@@ -42,6 +42,11 @@ func init() {
 				Ui: cui,
 			}, nil
 		},
+		"logs": func() (cli.Command, error) {
+			return &command.LogsCommand{
+				Ui: cui,
+			}, nil
+		},
 		"local": func() (cli.Command, error) {
 			return &command.LocalCommand{
 				Ui: cui,
